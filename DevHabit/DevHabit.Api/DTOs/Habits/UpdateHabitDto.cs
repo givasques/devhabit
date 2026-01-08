@@ -2,7 +2,7 @@
 
 namespace DevHabit.Api.DTOs.Habits;
 
-public sealed record CreateHabitDto
+public sealed record UpdateHabitDto
 {
     public required string Name { get; init; }
     public string? Description { get; init; }
@@ -10,5 +10,10 @@ public sealed record CreateHabitDto
     public required FrequencyDto Frequency { get; init; }
     public required TargetDto Target { get; init; }
     public DateOnly? EndDate { get; init; }
-    public MilestoneDto? Milestone { get; init; }
+    public UpdateMilestoneDto? Milestone { get; init; }
+}
+
+public sealed class UpdateMilestoneDto
+{
+    public required int Target { get; init; }
 }
