@@ -37,6 +37,7 @@ public sealed class HabitsController(ApplicationDbContext dbContext) : Controlle
         {
             return NotFound();
         }
+
         return Ok(habit);
     }
 
@@ -45,12 +46,7 @@ public sealed class HabitsController(ApplicationDbContext dbContext) : Controlle
         CreateHabitDto createHabitDto,
         IValidator<CreateHabitDto> validator)
     {
-        ValidationResult validationResult = await validator.ValidateAsync(createHabitDto);
-
-        if (!validationResult.IsValid)
-        {
-            return BadRequest(validationResult.ToDictionary());
-        }
+        await validator.ValidateAndThrowAsync(createHabitDto);
 
         Habit habit = createHabitDto.ToEntity();
 
