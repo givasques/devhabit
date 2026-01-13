@@ -1,4 +1,5 @@
-﻿using DevHabit.Api.Database;
+﻿using System.Linq.Expressions;
+using DevHabit.Api.Database;
 using DevHabit.Api.Database.Entities;
 using DevHabit.Api.DTOs.Habits;
 using FluentValidation;
@@ -6,6 +7,7 @@ using FluentValidation.Results;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace DevHabit.Api.Controllers;
 
@@ -14,9 +16,17 @@ namespace DevHabit.Api.Controllers;
 public sealed class HabitsController(ApplicationDbContext dbContext) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<HabitsCollectionDto>> GetHabits()
+    public async Task<ActionResult<HabitsCollectionDto>> GetHabits(HabitsQueryParameters query)
     {
-        List<HabitDto> habits = await dbContext.Habits
+        query.Search ??= query.Search?.Trim().ToLower();
+
+        List<HabitDto> habits = await dbContext
+            .Habits
+            .Where(h => query.Search == null ||
+                        h.Name.ToLower().Contains(query.Search) ||
+                        h.Description != null && h.Description.ToLower().Contains(query.Search))
+            .Where(h => query.Type == null || h.Type == query.Type)
+            .Where(h => query.Status == null || h.Status == query.Status)
             .Select(HabitQueries.ProjectToDto())
             .ToListAsync();
 
