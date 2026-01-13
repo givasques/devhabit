@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+﻿using System.Linq.Dynamic.Core;
 using DevHabit.Api.Database;
 using DevHabit.Api.Database.Entities;
 using DevHabit.Api.DTOs.Habits;
@@ -27,6 +27,7 @@ public sealed class HabitsController(ApplicationDbContext dbContext) : Controlle
                         h.Description != null && h.Description.ToLower().Contains(query.Search))
             .Where(h => query.Type == null || h.Type == query.Type)
             .Where(h => query.Status == null || h.Status == query.Status)
+            .OrderBy("Name ASC, Description DESC, EndDate DESC")
             .Select(HabitQueries.ProjectToDto())
             .ToListAsync();
 
