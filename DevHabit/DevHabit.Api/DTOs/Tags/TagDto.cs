@@ -8,8 +8,3 @@ public sealed record TagDto
     public required DateTime CreatedAtUtc { get; init; }
     public DateTime? UpdatedAtUtc { get; init; }
 }
-
-public sealed record TagsCollectionDto
-{
-    public List<TagDto> Data { get; init; }
-}

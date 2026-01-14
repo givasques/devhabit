@@ -21,7 +21,7 @@ public sealed class TagsController(ApplicationDbContext dbContext) : ControllerB
             .Select(TagQueries.ProjectToDto())
             .ToListAsync();
 
-        TagsCollectionDto tagsCollectionDto = new() { Data = tags };
+        TagsCollectionDto tagsCollectionDto = new() { Items = tags };
 
         return Ok(tagsCollectionDto);
     }
