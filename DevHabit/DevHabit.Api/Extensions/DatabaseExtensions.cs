@@ -1,7 +1,8 @@
 ﻿using System.Runtime.CompilerServices;
+using DevHabit.Api.Database;
 using Microsoft.EntityFrameworkCore;
 
-namespace DevHabit.Api.Database.Extensions;
+namespace DevHabit.Api.Extensions;
 
 public static class DatabaseExtensions
 {

@@ -1,6 +1,6 @@
 ﻿using DevHabit.Api.Database;
-using DevHabit.Api.Database.Entities;
 using DevHabit.Api.DTOs.Tags;
+using DevHabit.Api.Entities;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Mvc;

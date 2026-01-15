@@ -1,9 +1,9 @@
 ﻿using System.Dynamic;
 using System.Linq.Dynamic.Core;
 using DevHabit.Api.Database;
-using DevHabit.Api.Database.Entities;
 using DevHabit.Api.DTOs.Common;
 using DevHabit.Api.DTOs.Habits;
+using DevHabit.Api.Entities;
 using DevHabit.Api.Services;
 using DevHabit.Api.Services.Sorting;
 using FluentValidation;

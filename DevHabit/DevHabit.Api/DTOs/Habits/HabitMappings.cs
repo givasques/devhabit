@@ -1,5 +1,5 @@
 ﻿using System.Reflection.Metadata.Ecma335;
-using DevHabit.Api.Database.Entities;
+using DevHabit.Api.Entities;
 using DevHabit.Api.Services.Sorting;
 
 namespace DevHabit.Api.DTOs.Habits;

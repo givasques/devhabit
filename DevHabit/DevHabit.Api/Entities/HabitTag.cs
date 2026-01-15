@@ -1,4 +1,4 @@
-﻿namespace DevHabit.Api.Database.Entities;
+﻿namespace DevHabit.Api.Entities;
 
 public sealed class HabitTag
 {

@@ -1,4 +1,4 @@
-﻿using DevHabit.Api.Database.Entities;
+﻿using DevHabit.Api.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace DevHabit.Api.Database;

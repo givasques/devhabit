@@ -1,6 +1,6 @@
 ﻿using DevHabit.Api.Database;
-using DevHabit.Api.Database.Entities;
 using DevHabit.Api.DTOs.HabitTags;
+using DevHabit.Api.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
