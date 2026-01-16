@@ -6,3 +6,4 @@ public class LinkDto
     public required string Rel { get; set; }
     public required string Method { get; set; } 
 }
+

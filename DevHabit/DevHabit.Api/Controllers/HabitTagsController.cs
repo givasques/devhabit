@@ -8,10 +8,12 @@ namespace DevHabit.Api.Controllers;
 
 [ApiController]
 [Route("habits/{habitId}/tags")]
-public class HabitTagsController(ApplicationDbContext dbContext) : ControllerBase
+public sealed class HabitTagsController(ApplicationDbContext dbContext) : ControllerBase
 {
+    public static readonly string Name = nameof(HabitTagsController).Replace("Controller", string.Empty);
+
     [HttpPut]
-    public async Task<ActionResult> UpsertTagToHabit(string habitId, UpsertHabitTagsDto upsertHabitTagsDto)
+    public async Task<ActionResult> UpsertHabitTags(string habitId, UpsertHabitTagsDto upsertHabitTagsDto)
     {
         Habit? habit = await dbContext.Habits
             .Include(h => h.HabitTags)
