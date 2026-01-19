@@ -17,6 +17,7 @@
 	  <PackageReference Include="Asp.Versioning.Mvc" />
 	  <PackageReference Include="EFCore.NamingConventions" />
 	  <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+	  <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
 	  <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" />
 	  <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
 	  <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
@@ -36,6 +37,7 @@
 
   <ItemGroup>
     <Folder Include="Migrations\Application\" />
+    <Folder Include="Migrations\Identity\" />
   </ItemGroup>
 
 </Project>
