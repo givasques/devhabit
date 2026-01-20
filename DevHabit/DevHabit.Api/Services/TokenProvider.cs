@@ -28,7 +28,8 @@ public sealed class TokenProvider(IOptions<JwtAuthOptions> options)
         List<Claim> claims = 
         [
             new (Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames.Sub, request.UserId),
-            new (Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames.Email, request.Email)
+            new (Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames.Email, request.Email),
+            ..request.Roles.Select(role => new Claim(ClaimTypes.Role, role))
         ];
 
         var tokenDescriptor = new SecurityTokenDescriptor
