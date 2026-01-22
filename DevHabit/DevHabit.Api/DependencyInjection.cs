@@ -71,6 +71,8 @@ public static class DependencyInjection
 
         builder.Services.AddOpenApi();
 
+        builder.Services.AddResponseCaching();
+
         return builder;
     }  
 
@@ -172,6 +174,14 @@ public static class DependencyInjection
 
         builder.Services.Configure<EncryptionOptions>(builder.Configuration.GetSection("Encryption"));
         builder.Services.AddTransient<EncryptionService>();
+
+        builder.Services.Configure<GitHubAutomationOptions>(
+            builder.Configuration.GetSection(GitHubAutomationOptions.SectionName));
+
+        builder.Services.Configure<TagsOptions>(
+            builder.Configuration.GetSection(TagsOptions.SectionName));
+
+        builder.Services.AddSingleton<InMemoryETagStore>();
 
         return builder;
     }

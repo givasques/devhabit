@@ -1,27 +1,38 @@
-﻿using DevHabit.Api.Database;
+﻿using System.Net.Mime;
+using DevHabit.Api.Database;
 using DevHabit.Api.DTOs.Common;
 using DevHabit.Api.DTOs.Tags;
 using DevHabit.Api.Entities;
 using DevHabit.Api.Services;
+using DevHabit.Api.Settings;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace DevHabit.Api.Controllers;
 
+[ResponseCache(Duration = 120)]
 [Authorize(Roles = Roles.Member)]
 [ApiController]
 [Route("tags")]
+[Produces(
+    MediaTypeNames.Application.Json,
+    CustomMediaTypeNames.Application.JsonV1,
+    CustomMediaTypeNames.Application.HateoasJson,
+    CustomMediaTypeNames.Application.HateoasJsonV1)]
 public sealed class TagsController(
     ApplicationDbContext dbContext,
     UserContext userContext,
     LinkService linkService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<TagsCollectionDto>> GetTags([FromHeader] AcceptHeaderDto acceptHeader)
+    public async Task<ActionResult<TagsCollectionDto>> GetTags(
+        [FromHeader] AcceptHeaderDto acceptHeader,
+        IOptions<TagsOptions> options)
     {
         string? userId = await userContext.GetUserIdAsync();
         if (string.IsNullOrWhiteSpace(userId))
@@ -39,7 +50,7 @@ public sealed class TagsController(
 
         if (acceptHeader.IncludeLinks)
         {
-            tagsCollectionDto.Links = CreateLinksForTags(tagsCollectionDto.Items.Count);
+            tagsCollectionDto.Links = CreateLinksForTags(tags.Count, options.Value.MaxAllowedTags);
             foreach (TagDto tagDto in tagsCollectionDto.Items)
             {
                 tagDto.Links = CreateLinksForTag(tagDto.Id);
@@ -149,14 +160,14 @@ public sealed class TagsController(
         return NoContent();
     }
 
-    private List<LinkDto> CreateLinksForTags(int tagsCount)
+    private List<LinkDto> CreateLinksForTags(int tagsCount, int maxAllowedTags)
     {
         List<LinkDto> links =
         [
             linkService.Create(nameof(GetTags), "self", HttpMethods.Get),
         ];
 
-        if (tagsCount < 5)
+        if (tagsCount < maxAllowedTags)
         {
             links.Add(linkService.Create(nameof(CreateTag), "create", HttpMethods.Post));
         }
