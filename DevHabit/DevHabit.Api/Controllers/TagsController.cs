@@ -1,4 +1,5 @@
 ﻿using DevHabit.Api.Database;
+using DevHabit.Api.DTOs.Common;
 using DevHabit.Api.DTOs.Tags;
 using DevHabit.Api.Entities;
 using DevHabit.Api.Services;
@@ -16,10 +17,11 @@ namespace DevHabit.Api.Controllers;
 [Route("tags")]
 public sealed class TagsController(
     ApplicationDbContext dbContext,
-    UserContext userContext) : ControllerBase
+    UserContext userContext,
+    LinkService linkService) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<TagsCollectionDto>> GetTags()
+    public async Task<ActionResult<TagsCollectionDto>> GetTags([FromHeader] AcceptHeaderDto acceptHeader)
     {
         string? userId = await userContext.GetUserIdAsync();
         if (string.IsNullOrWhiteSpace(userId))
@@ -34,6 +36,15 @@ public sealed class TagsController(
             .ToListAsync();
 
         TagsCollectionDto tagsCollectionDto = new() { Items = tags };
+
+        if (acceptHeader.IncludeLinks)
+        {
+            tagsCollectionDto.Links = CreateLinksForTags(tagsCollectionDto.Items.Count);
+            foreach (TagDto tagDto in tagsCollectionDto.Items)
+            {
+                tagDto.Links = CreateLinksForTag(tagDto.Id);
+            }
+        }
 
         return Ok(tagsCollectionDto);
     }
@@ -136,5 +147,32 @@ public sealed class TagsController(
         await dbContext.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    private List<LinkDto> CreateLinksForTags(int tagsCount)
+    {
+        List<LinkDto> links =
+        [
+            linkService.Create(nameof(GetTags), "self", HttpMethods.Get),
+        ];
+
+        if (tagsCount < 5)
+        {
+            links.Add(linkService.Create(nameof(CreateTag), "create", HttpMethods.Post));
+        }
+
+        return links;
+    }
+
+    private List<LinkDto> CreateLinksForTag(string id)
+    {
+        List<LinkDto> links =
+        [
+            linkService.Create(nameof(GetTag), "self", HttpMethods.Get, new{ id }),
+            linkService.Create(nameof(UpdateTag), "update", HttpMethods.Put, new { id }),
+            linkService.Create(nameof(DeleteTag), "delete", HttpMethods.Delete, new { id })
+        ];
+
+        return links;
     }
 }

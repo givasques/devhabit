@@ -1,4 +1,6 @@
-﻿namespace DevHabit.Api.DTOs.Users;
+﻿using DevHabit.Api.DTOs.Common;
+
+namespace DevHabit.Api.DTOs.Users;
 
 public class UserDto
 {
@@ -7,4 +9,5 @@ public class UserDto
     public string Name { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
+    public List<LinkDto> Links { get; set; }
 }
