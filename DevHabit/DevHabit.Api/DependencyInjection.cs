@@ -6,6 +6,7 @@ using DevHabit.Api.Database;
 using DevHabit.Api.DTOs.Entries;
 using DevHabit.Api.DTOs.Habits;
 using DevHabit.Api.Entities;
+using DevHabit.Api.Extensions;
 using DevHabit.Api.Jobs;
 using DevHabit.Api.Middleware;
 using DevHabit.Api.Services;
@@ -18,6 +19,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json.Serialization;
 using Npgsql;
@@ -25,6 +27,8 @@ using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Polly;
+using Polly.Telemetry;
 using Quartz;
 using Refit;
 
@@ -160,6 +164,9 @@ public static class DependencyInjection
 
         builder.Services.AddScoped<GitHubAccessTokenService>();
         builder.Services.AddTransient<GitHubService>();
+
+        builder.Services.AddHttpClient().ConfigureHttpClientDefaults(b => b.AddStandardResilienceHandler());
+
         builder.Services.AddTransient<RefitGitHubService>();
         builder.Services
             .AddHttpClient("github")
@@ -174,12 +181,37 @@ public static class DependencyInjection
                     .Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
             });
 
+        builder.Services.AddTransient<DelayHandler>();
         builder.Services
             .AddRefitClient<IGitHubApi>(new RefitSettings
             {
                 ContentSerializer = new NewtonsoftJsonContentSerializer()
             })
-            .ConfigureHttpClient(client => client.BaseAddress = new Uri("https://api.github.com"));
+            .ConfigureHttpClient(client => client.BaseAddress = new Uri("https://api.github.com"))
+            .AddHttpMessageHandler<DelayHandler>();
+            // Creating a custom resilience handler pipeline 
+            //.InternalRemoveAllResilienceHandlers()
+            //.AddResilienceHandler("custom", pipeline => {
+            //    pipeline.AddTimeout(TimeSpan.FromSeconds(5));
+
+            //    pipeline.AddRetry(new HttpRetryStrategyOptions
+            //    {
+            //        MaxRetryAttempts = 3,
+            //        BackoffType = DelayBackoffType.Exponential,
+            //        UseJitter = true,
+            //        Delay = TimeSpan.FromMilliseconds(500)
+            //    });
+
+            //    pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+            //    {
+            //        SamplingDuration = TimeSpan.FromSeconds(10),
+            //        FailureRatio = 0.9,
+            //        MinimumThroughput = 5,
+            //        BreakDuration = TimeSpan.FromSeconds(5)
+            //    });
+
+            //    pipeline.AddTimeout(TimeSpan.FromSeconds(1));
+            //});
 
         builder.Services.Configure<EncryptionOptions>(builder.Configuration.GetSection("Encryption"));
         builder.Services.AddTransient<EncryptionService>();
