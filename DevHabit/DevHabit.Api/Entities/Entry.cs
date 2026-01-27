@@ -15,5 +15,7 @@ public sealed class Entry
     public DateTime? UpdatedAtUtc { get; set; }
 
     public Habit Habit { get; set; }
+
+    public static string NewId() => $"e_{Guid.CreateVersion7()}";
 }
 

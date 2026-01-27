@@ -12,6 +12,7 @@ builder
     .AddObservability()
     .AddApplicationServices()
     .AddAuthenticationServices()
+    .AddBackgroundJobs()
     .AddCorsPolicy()
     .AddRateLimiting();
 
@@ -26,19 +27,15 @@ if (app.Environment.IsDevelopment())
     await app.SeedInitialDataAsync();
 }
 
-app.UseHttpsRedirection();
-
 app.UseExceptionHandler();
-
+app.UseHttpsRedirection();
 app.UseCors(CorsOptions.PolicyName);
-
-app.UseResponseCaching();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.UseRateLimiter();
 
+app.UseUserContextEnrichment();
 app.UseMiddleware<ETagMiddleware>();
 
 app.MapControllers();

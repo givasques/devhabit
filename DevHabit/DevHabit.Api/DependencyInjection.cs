@@ -183,7 +183,7 @@ public static class DependencyInjection
                     .Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
             });
 
-        builder.Services.AddTransient<DelayHandler>();
+        //builder.Services.AddTransient<DelayHandler>();
         builder.Services
             .AddRefitClient<IGitHubApi>(new RefitSettings
             {
@@ -278,6 +278,13 @@ public static class DependencyInjection
                     s.WithIntervalInMinutes(settings.ScanIntervalMinutes)
                         .RepeatForever();
                 }));
+
+            q.AddJob<CleanupEntryImportJobsJob>(opts => opts.WithIdentity("cleanup-entry-imports"));
+
+            q.AddTrigger(opts => opts
+                .ForJob("cleanup-entry-imports")
+                .WithIdentity("cleanup-entry-imports-trigger")
+                .WithCronSchedule("0 0 3 * * ?", x => x.InTimeZone(TimeZoneInfo.Utc)));
         });
 
 
