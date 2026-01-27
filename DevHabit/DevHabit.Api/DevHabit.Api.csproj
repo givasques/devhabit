@@ -46,4 +46,8 @@
     <Folder Include="Migrations\Identity\" />
   </ItemGroup>
 
+	<ItemGroup>
+		<InternalsVisibleTo Include="DevHabit.UnitTests"/>
+	</ItemGroup>
+
 </Project>
