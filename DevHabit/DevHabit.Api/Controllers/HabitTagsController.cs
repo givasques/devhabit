@@ -10,11 +10,22 @@ namespace DevHabit.Api.Controllers;
 [Authorize(Roles = Roles.Member)]
 [ApiController]
 [Route("habits/{habitId}/tags")]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
 public sealed class HabitTagsController(ApplicationDbContext dbContext) : ControllerBase
 {
     public static readonly string Name = nameof(HabitTagsController).Replace("Controller", string.Empty);
 
+    /// <summary>
+    /// Creates or updates the set of tags associated with a habit
+    /// </summary>
+    /// <param name="habitId">The habit identifier</param>
+    /// <param name="upsertHabitTagsDto">The list of tag IDs to associate with the habit</param>
+    /// <returns>No content on success</returns>
     [HttpPut]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> UpsertHabitTags(string habitId, UpsertHabitTagsDto upsertHabitTagsDto)
     {
         Habit? habit = await dbContext.Habits
@@ -59,7 +70,15 @@ public sealed class HabitTagsController(ApplicationDbContext dbContext) : Contro
         return NoContent();
     }
 
+    /// <summary>
+    /// Removes a specific tag from a habit
+    /// </summary>
+    /// <param name="habitId">The habit identifier</param>
+    /// <param name="tagId">The tag identifier</param>
+    /// <returns>No content on success</returns>
     [HttpDelete("{tagId}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> DeleteHabitTag(string habitId, string tagId)
     {
         HabitTag? habitTag = await dbContext

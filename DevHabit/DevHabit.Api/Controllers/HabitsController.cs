@@ -30,13 +30,24 @@ namespace DevHabit.Api.Controllers;
     CustomMediaTypeNames.Application.HateoasJson,
     CustomMediaTypeNames.Application.HateoasJsonV1,
     CustomMediaTypeNames.Application.HateoasJsonV2)]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
 public sealed class HabitsController(
-    ApplicationDbContext dbContext, 
+    ApplicationDbContext dbContext,
     LinkService linkService,
     UserContext userContext) : ControllerBase
 {
+    /// <summary>
+    /// Gets a paginated list of habits for the authenticated user
+    /// </summary>
+    /// <param name="query">Filtering, paging, sorting, and shaping parameters</param>
+    /// <param name="sortMappingProvider">Provides valid sort mappings</param>
+    /// <param name="dataShapingService">Service for dynamic data shaping</param>
+    /// <returns>A paginated list of habits</returns>
     [HttpGet]
     [Produces(MediaTypeNames.Application.Json, CustomMediaTypeNames.Application.HateoasJson)]
+    [ProducesResponseType<PaginationResult<ExpandoObject>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetHabits(
         [FromQuery] HabitsQueryParameters query,
         SortMappingProvider sortMappingProvider,
@@ -55,7 +66,7 @@ public sealed class HabitsController(
                 detail: $"The provided sort parameter isn't valid: '{query.Sort}'");
         }
 
-        if(!dataShapingService.Validate<HabitDto>(query.Fields))
+        if (!dataShapingService.Validate<HabitDto>(query.Fields))
         {
             return Problem(
                 statusCode: StatusCodes.Status400BadRequest,
@@ -106,8 +117,18 @@ public sealed class HabitsController(
         return Ok(paginationResult);
     }
 
+    /// <summary>
+    /// Gets a specific habit by ID (API v1)
+    /// </summary>
+    /// <param name="id">The habit identifier</param>
+    /// <param name="query">Data shaping and HATEOAS parameters</param>
+    /// <param name="dataShapingService">Service for dynamic data shaping</param>
+    /// <returns>The requested habit</returns>
     [HttpGet("{id}")]
     [MapToApiVersion(1.0)]
+    [ProducesResponseType<ExpandoObject>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetHabit(
         string id,
         [FromQuery] HabitQueryParameters query,
@@ -148,8 +169,18 @@ public sealed class HabitsController(
         return Ok(shapedHabitDto);
     }
 
+    /// <summary>
+    /// Gets a specific habit by ID (API v2)
+    /// </summary>
+    /// <param name="id">The habit identifier</param>
+    /// <param name="query">Data shaping and HATEOAS parameters</param>
+    /// <param name="dataShapingService">Service for dynamic data shaping</param>
+    /// <returns>The requested habit (v2 representation)</returns>
     [HttpGet("{id}")]
     [ApiVersion(2.0)]
+    [ProducesResponseType<ExpandoObject>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetHabitV2(
         string id,
         [FromQuery] HabitQueryParameters query,
@@ -190,7 +221,16 @@ public sealed class HabitsController(
         return Ok(shapedHabitDto);
     }
 
+    /// <summary>
+    /// Creates a new habit for the authenticated user
+    /// </summary>
+    /// <param name="createHabitDto">The habit creation details</param>
+    /// <param name="acceptHeader">Controls HATEOAS link generation</param>
+    /// <param name="validator">Validator for the create request</param>
+    /// <returns>The created habit</returns>
     [HttpPost]
+    [ProducesResponseType<HabitDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<HabitDto>> CreateHabit(
         CreateHabitDto createHabitDto,
         [FromHeader] AcceptHeaderDto acceptHeader,
@@ -220,7 +260,15 @@ public sealed class HabitsController(
         return CreatedAtAction(nameof(GetHabit), new { dto.Id }, dto);
     }
 
+    /// <summary>
+    /// Updates an existing habit بالكامل
+    /// </summary>
+    /// <param name="id">The habit identifier</param>
+    /// <param name="updateHabitDto">The updated habit data</param>
+    /// <returns>No content on success</returns>
     [HttpPut("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> UpdateHabit(string id, UpdateHabitDto updateHabitDto)
     {
         string? userId = await userContext.GetUserIdAsync();
@@ -244,7 +292,16 @@ public sealed class HabitsController(
         return NoContent();
     }
 
+    /// <summary>
+    /// Partially updates a habit using JSON Patch
+    /// </summary>
+    /// <param name="id">The habit identifier</param>
+    /// <param name="patchDocument">The JSON Patch document</param>
+    /// <returns>No content on success</returns>
     [HttpPatch("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> PatchHabit(string id, JsonPatchDocument<HabitDto> patchDocument)
     {
         string? userId = await userContext.GetUserIdAsync();
@@ -279,7 +336,14 @@ public sealed class HabitsController(
         return NoContent();
     }
 
+    /// <summary>
+    /// Deletes a habit by ID
+    /// </summary>
+    /// <param name="id">The habit identifier</param>
+    /// <returns>No content on success</returns>
     [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> DeleteHabit(string id)
     {
         string? userId = await userContext.GetUserIdAsync();
@@ -304,8 +368,8 @@ public sealed class HabitsController(
     }
 
     private List<LinkDto> CreateLinksForHabits(
-        HabitsQueryParameters parameters, 
-        bool hasNextPage, 
+        HabitsQueryParameters parameters,
+        bool hasNextPage,
         bool hasPreviousPage)
     {
         List<LinkDto> links = [
@@ -365,9 +429,9 @@ public sealed class HabitsController(
             linkService.Create(nameof(PatchHabit), "partial-update", HttpMethods.Patch, new { id }),
             linkService.Create(nameof(DeleteHabit), "delete", HttpMethods.Delete, new { id }),
             linkService.Create(nameof(
-                HabitTagsController.UpsertHabitTags), 
-                "upsert-tags", 
-                HttpMethods.Put, 
+                HabitTagsController.UpsertHabitTags),
+                "upsert-tags",
+                HttpMethods.Put,
                 new { habitId = id },
                 HabitTagsController.Name)
         ];

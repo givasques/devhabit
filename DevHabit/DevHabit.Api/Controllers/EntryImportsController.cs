@@ -29,7 +29,16 @@ public sealed class EntryImportsController(
     LinkService linkService,
     UserContext userContext) : ControllerBase
 {
+    /// <summary>
+    /// Creates a new entry import job from an uploaded file and schedules background processing.
+    /// </summary>
+    /// <param name="createImportJobDto">Import job creation data including the file to process</param>
+    /// <param name="acceptHeader">Controls HATEOAS link generation</param>
+    /// <param name="validator">Validator for the import job request</param>
+    /// <returns>The created import job details</returns>
     [HttpPost]
+    [ProducesResponseType(typeof(EntryImportJobDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<EntryImportJobDto>> CreateImportJob(
         [FromForm] CreateEntryImportJobDto createImportJobDto,
         [FromHeader] AcceptHeaderDto acceptHeader,
@@ -43,7 +52,6 @@ public sealed class EntryImportsController(
 
         await validator.ValidateAsync(createImportJobDto);
 
-        // Create import job
         using var memoryStream = new MemoryStream();
         await createImportJobDto.File.CopyToAsync(memoryStream);
 
@@ -60,9 +68,8 @@ public sealed class EntryImportsController(
         dbContext.EntryImportJobs.Add(importJob);
         await dbContext.SaveChangesAsync();
 
-        // Schedule processing job
         IScheduler scheduler = await schedulerFactory.GetScheduler();
-        
+
         IJobDetail jobDetail = JobBuilder.Create<ProcessEntryImportJob>()
             .WithIdentity($"process-entry-import-{importJob.Id}")
             .UsingJobData("importJobId", importJob.Id)
@@ -76,7 +83,7 @@ public sealed class EntryImportsController(
         await scheduler.ScheduleJob(jobDetail, trigger);
 
         EntryImportJobDto importJobDto = importJob.ToDto();
-        
+
         if (acceptHeader.IncludeLinks)
         {
             importJobDto.Links = CreateLinksForImportJob(importJob.Id);
@@ -85,7 +92,15 @@ public sealed class EntryImportsController(
         return CreatedAtAction(nameof(GetImportJob), new { id = importJobDto.Id }, importJobDto);
     }
 
+    /// <summary>
+    /// Returns a paginated list of import jobs for the authenticated user.
+    /// </summary>
+    /// <param name="acceptHeader">Controls HATEOAS link generation</param>
+    /// <param name="page">Page number for pagination</param>
+    /// <param name="pageSize">Number of items per page</param>
+    /// <returns>A paginated list of import jobs</returns>
     [HttpGet]
+    [ProducesResponseType(typeof(PaginationResult<EntryImportJobDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PaginationResult<EntryImportJobDto>>> GetImportJobs(
         [FromHeader] AcceptHeaderDto acceptHeader,
         [FromQuery] int page = 1,
@@ -133,7 +148,15 @@ public sealed class EntryImportsController(
         return Ok(result);
     }
 
+    /// <summary>
+    /// Returns details of a specific import job by ID.
+    /// </summary>
+    /// <param name="id">The import job identifier</param>
+    /// <param name="acceptHeader">Controls HATEOAS link generation</param>
+    /// <returns>The import job details</returns>
     [HttpGet("{id}")]
+    [ProducesResponseType(typeof(EntryImportJobDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EntryImportJobDto>> GetImportJob(
         string id,
         [FromHeader] AcceptHeaderDto acceptHeader)
@@ -153,7 +176,7 @@ public sealed class EntryImportsController(
         {
             return NotFound();
         }
-        
+
         if (acceptHeader.IncludeLinks)
         {
             importJob.Links = CreateLinksForImportJob(id);
@@ -162,6 +185,9 @@ public sealed class EntryImportsController(
         return Ok(importJob);
     }
 
+    /// <summary>
+    /// Builds HATEOAS links for a single import job resource.
+    /// </summary>
     private List<LinkDto> CreateLinksForImportJob(string id)
     {
         return
@@ -170,6 +196,9 @@ public sealed class EntryImportsController(
         ];
     }
 
+    /// <summary>
+    /// Builds HATEOAS links for paginated import job collections.
+    /// </summary>
     private List<LinkDto> CreateLinksForImportJobs(int page, int pageSize, bool hasNextPage, bool hasPreviousPage)
     {
         var links = new List<LinkDto>

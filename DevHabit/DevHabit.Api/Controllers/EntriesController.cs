@@ -30,7 +30,12 @@ public sealed class EntriesController(
     LinkService linkService,
     UserContext userContext) : ControllerBase
 {
+    /// <summary>
+    /// Returns a paginated list of entries using offset pagination.
+    /// Supports filtering, sorting, data shaping and optional HATEOAS links.
+    /// </summary>
     [HttpGet]
+    [ProducesResponseType(typeof(PaginationResult<ExpandoObject>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetEntries(
         [FromQuery] EntriesQueryParameters query,
         SortMappingProvider sortMappingProvider,
@@ -97,7 +102,11 @@ public sealed class EntriesController(
         return Ok(paginationResult);
     }
 
+    /// <summary>
+    /// Returns entries using cursor-based pagination for efficient large datasets.
+    /// </summary>
     [HttpGet("cursor")]
+    [ProducesResponseType(typeof(CollectionResponse<ExpandoObject>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetEntriesCursor(
         [FromQuery] EntriesCursorQueryParameters query,
         DataShapingService dataShapingService)
@@ -123,7 +132,7 @@ public sealed class EntriesController(
             .Where(e => query.Source == null || e.Source == query.Source)
             .Where(e => query.IsArchived == null || e.IsArchived == query.IsArchived);
 
-        if(!string.IsNullOrWhiteSpace(query.Cursor))
+        if (!string.IsNullOrWhiteSpace(query.Cursor))
         {
             var cursor = EntryCursorDto.Decode(query.Cursor);
             if (cursor is not null)
@@ -144,7 +153,7 @@ public sealed class EntriesController(
         bool hasNextPage = entries.Count > query.Limit;
         string? nextCursor = null;
 
-        if(hasNextPage)
+        if (hasNextPage)
         {
             EntryDto lastEntry = entries[^1];
             nextCursor = EntryCursorDto.Encode(lastEntry.Id, lastEntry.Date);
@@ -167,7 +176,12 @@ public sealed class EntriesController(
         return Ok(collectionResponse);
     }
 
+    /// <summary>
+    /// Returns a single entry by ID for the authenticated user.
+    /// </summary>
     [HttpGet("{id}")]
+    [ProducesResponseType(typeof(ExpandoObject), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetEntry(
         string id,
         [FromQuery] EntryQueryParameters query,
@@ -207,8 +221,12 @@ public sealed class EntriesController(
         return Ok(shapedEntryDto);
     }
 
+    /// <summary>
+    /// Creates a new entry for a habit.
+    /// </summary>
     [HttpPost]
     [IdempotentRequest]
+    [ProducesResponseType(typeof(EntryDto), StatusCodes.Status201Created)]
     public async Task<ActionResult<EntryDto>> CreateEntry(
         CreateEntryDto createEntryDto,
         [FromHeader] AcceptHeaderDto acceptHeader,
@@ -247,7 +265,11 @@ public sealed class EntriesController(
         return CreatedAtAction(nameof(GetEntry), new { id = entryDto.Id }, entryDto);
     }
 
+    /// <summary>
+    /// Creates multiple entries in a single request.
+    /// </summary>
     [HttpPost("batch")]
+    [ProducesResponseType(typeof(List<EntryDto>), StatusCodes.Status201Created)]
     public async Task<ActionResult<List<EntryDto>>> CreateEntryBatch(
         CreateEntryBatchDto createEntryBatchDto,
         [FromHeader] AcceptHeaderDto acceptHeader,
@@ -296,6 +318,9 @@ public sealed class EntriesController(
         return CreatedAtAction(nameof(GetEntries), entryDtos);
     }
 
+    /// <summary>
+    /// Updates an existing entry.
+    /// </summary>
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateEntry(
         string id,
@@ -324,6 +349,9 @@ public sealed class EntriesController(
         return NoContent();
     }
 
+    /// <summary>
+    /// Archives an entry (soft delete behavior).
+    /// </summary>
     [HttpPut("{id}/archive")]
     public async Task<ActionResult> ArchiveEntry(string id)
     {
@@ -348,6 +376,9 @@ public sealed class EntriesController(
         return NoContent();
     }
 
+    /// <summary>
+    /// Restores an archived entry.
+    /// </summary>
     [HttpPut("{id}/un-archive")]
     public async Task<ActionResult> UnArchiveEntry(string id)
     {
@@ -372,6 +403,9 @@ public sealed class EntriesController(
         return NoContent();
     }
 
+    /// <summary>
+    /// Permanently deletes an entry.
+    /// </summary>
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteEntry(string id)
     {
@@ -395,7 +429,11 @@ public sealed class EntriesController(
         return NoContent();
     }
 
+    /// <summary>
+    /// Returns statistics such as daily counts and streaks for the user’s entries.
+    /// </summary>
     [HttpGet("stats")]
+    [ProducesResponseType(typeof(EntryStatsDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<EntryStatsDto>> GetStats()
     {
         string? userId = await userContext.GetUserIdAsync();
@@ -421,7 +459,6 @@ public sealed class EntriesController(
             });
         }
 
-        // Calculate daily stats
         var dailyStats = entries
             .GroupBy(e => e.Date)
             .Select(g => new DailyStatsDto
@@ -432,10 +469,8 @@ public sealed class EntriesController(
             .OrderByDescending(s => s.Date)
             .ToList();
 
-        // Calculate total entries
         int totalEntries = entries.Count;
 
-        // Calculate streaks
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var dates = entries.Select(e => e.Date).Distinct().OrderBy(d => d).ToList();
 
@@ -443,7 +478,6 @@ public sealed class EntriesController(
         int longestStreak = 0;
         int currentCount = 0;
 
-        // Calculate current streak (must be active up to today)
         for (int i = dates.Count - 1; i >= 0; i--)
         {
             if (i == dates.Count - 1)
@@ -467,7 +501,6 @@ public sealed class EntriesController(
             }
         }
 
-        // Calculate longest streak
         for (int i = 0; i < dates.Count; i++)
         {
             if (i == 0 || dates[i] == dates[i - 1].AddDays(1))
@@ -490,6 +523,9 @@ public sealed class EntriesController(
         });
     }
 
+    /// <summary>
+    /// Builds HATEOAS links for paginated entry collections.
+    /// </summary>
     private List<LinkDto> CreateLinksForEntries(
         EntriesQueryParameters parameters,
         bool hasNextPage,
@@ -549,6 +585,9 @@ public sealed class EntriesController(
         return links;
     }
 
+    /// <summary>
+    /// Builds HATEOAS links for a single entry resource.
+    /// </summary>
     private List<LinkDto> CreateLinksForEntry(string id, string? fields, bool isArchived)
     {
         List<LinkDto> links =
@@ -564,6 +603,9 @@ public sealed class EntriesController(
         return links;
     }
 
+    /// <summary>
+    /// Builds HATEOAS links for cursor-based entry collections.
+    /// </summary>
     private List<LinkDto> CreateLinksForEntriesCursor(EntriesCursorQueryParameters parameters, string? nextCursor)
     {
         List<LinkDto> links =

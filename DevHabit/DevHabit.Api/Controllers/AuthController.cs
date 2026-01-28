@@ -16,6 +16,8 @@ namespace DevHabit.Api.Controllers;
 [ApiController]
 [Route("auth")]
 [AllowAnonymous]
+[ProducesResponseType(StatusCodes.Status400BadRequest)]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
 public class AuthController(
     UserManager<IdentityUser> userManager,
     ApplicationIdentityDbContext identityDbContext,
@@ -25,7 +27,13 @@ public class AuthController(
 {
     private readonly JwtAuthOptions _jwtAuthOptions = options.Value;
 
+    /// <summary>
+    /// Registers a new user and returns authentication tokens.
+    /// </summary>
+    /// <param name="registerUserDto">User registration details including email and password.</param>
+    /// <returns>Access and refresh tokens for the newly created user.</returns>
     [HttpPost("register")]
+    [ProducesResponseType<AccessTokensDto>(StatusCodes.Status200OK)]
     public async Task<ActionResult<AccessTokensDto>> Register(RegisterUserDto registerUserDto)
     {
         using IDbContextTransaction transaction = await identityDbContext.Database.BeginTransactionAsync();
@@ -101,7 +109,13 @@ public class AuthController(
         return Ok(accessTokens);
     }
 
+    /// <summary>
+    /// Authenticates a user using email and password and returns new tokens.
+    /// </summary>
+    /// <param name="loginUserDto">User login credentials.</param>
+    /// <returns>Access and refresh tokens for the authenticated user.</returns>
     [HttpPost("login")]
+    [ProducesResponseType<AccessTokensDto>(StatusCodes.Status200OK)]
     public async Task<ActionResult<AccessTokensDto>> Login(LoginUserDto loginUserDto)
     {
         IdentityUser? identityUser = await userManager.FindByEmailAsync(loginUserDto.Email);
@@ -131,7 +145,13 @@ public class AuthController(
         return Ok(accessTokens);
     }
 
+    /// <summary>
+    /// Generates new access and refresh tokens using a valid refresh token.
+    /// </summary>
+    /// <param name="refreshTokenDto">The refresh token issued previously.</param>
+    /// <returns>Newly generated access and refresh tokens.</returns>
     [HttpPost("refresh")]
+    [ProducesResponseType<AccessTokensDto>(StatusCodes.Status200OK)]
     public async Task<ActionResult<AccessTokensDto>> Refresh(RefreshTokenDto refreshTokenDto)
     {
         RefreshToken? refreshToken = await identityDbContext.RefreshTokens
@@ -159,5 +179,5 @@ public class AuthController(
         await identityDbContext.SaveChangesAsync();
 
         return Ok(accessTokens);
-    } 
+    }
 }
