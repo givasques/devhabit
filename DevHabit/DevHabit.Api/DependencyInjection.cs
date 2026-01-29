@@ -1,6 +1,5 @@
 ﻿using System.Net.Http.Headers;
 using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.RateLimiting;
 using Asp.Versioning;
@@ -22,7 +21,6 @@ using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json.Serialization;
 using Npgsql;
@@ -30,8 +28,6 @@ using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using Polly;
-using Polly.Telemetry;
 using Quartz;
 using Refit;
 
@@ -45,9 +41,9 @@ public static class DependencyInjection
         {
             options.ReturnHttpNotAcceptable = true;
         })
-        .AddNewtonsoftJson(options => options.SerializerSettings.ContractResolver =
-            new CamelCasePropertyNamesContractResolver())
-        .AddXmlSerializerFormatters();
+            .AddNewtonsoftJson(options => options.SerializerSettings.ContractResolver =
+                new CamelCasePropertyNamesContractResolver())
+            .AddXmlSerializerFormatters();
 
         builder.Services.Configure<MvcOptions>(options =>
         {
@@ -62,35 +58,31 @@ public static class DependencyInjection
             formatter.SupportedMediaTypes.Add(CustomMediaTypeNames.Application.HateoasJsonV2);
         });
 
-        builder.Services.AddApiVersioning(options =>
-        {
-            options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1.0);
-            options.AssumeDefaultVersionWhenUnspecified = true;
-            options.ReportApiVersions = true;
-            options.ApiVersionSelector = new DefaultApiVersionSelector(options);
+        builder.Services
+            .AddApiVersioning(options =>
+            {
+                options.DefaultApiVersion = new ApiVersion(1.0);
+                options.AssumeDefaultVersionWhenUnspecified = true;
+                options.ReportApiVersions = true;
+                options.ApiVersionSelector = new DefaultApiVersionSelector(options);
 
-            options.ApiVersionReader = ApiVersionReader.Combine(
-                new MediaTypeApiVersionReader(),
-                new MediaTypeApiVersionReaderBuilder()
-                    .Template("application/vnd.dev-habit.hateoas.{version}+json")
-                    .Build());
-        })
-        .AddMvc();
+                options.ApiVersionReader = ApiVersionReader.Combine(
+                    new MediaTypeApiVersionReader(),
+                    new MediaTypeApiVersionReaderBuilder()
+                        .Template("application/vnd.dev-habit.hateoas.{version}+json")
+                        .Build());
+            })
+            .AddMvc();
+            //.AddApiExplorer();
 
         //builder.Services.AddOpenApi();
-        builder.Services.AddSwaggerGen(options =>
-        {
-            options.ResolveConflictingActions(descriptions => descriptions.First());
-
-            string xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-            string xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-            options.IncludeXmlComments(xmlPath);
-        });
+        builder.Services.AddSwaggerGen();
+        builder.Services.ConfigureOptions<ConfigureSwaggerGenOptions>();
 
         builder.Services.AddResponseCaching();
 
         return builder;
-    }  
+    }
 
     public static WebApplicationBuilder AddErrorHandling(this WebApplicationBuilder builder)
     {
@@ -101,30 +93,29 @@ public static class DependencyInjection
                 context.ProblemDetails.Extensions.TryAdd("requestId", context.HttpContext.TraceIdentifier);
             };
         });
-
         builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
         return builder;
     }
 
-    public static WebApplicationBuilder AddDataBase(this WebApplicationBuilder builder)
+    public static WebApplicationBuilder AddDatabase(this WebApplicationBuilder builder)
     {
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options
-            .UseNpgsql(
-               builder.Configuration.GetConnectionString("Database"),
-               npgsqlOptions => npgsqlOptions
-                    .MigrationsHistoryTable(HistoryRepository.DefaultTableName, Schemas.Application))
-            .UseSnakeCaseNamingConvention());
+                .UseNpgsql(
+                    builder.Configuration.GetConnectionString("Database"),
+                    npgsqlOptions => npgsqlOptions
+                        .MigrationsHistoryTable(HistoryRepository.DefaultTableName, Schemas.Application))
+                .UseSnakeCaseNamingConvention());
 
         builder.Services.AddDbContext<ApplicationIdentityDbContext>(options =>
             options
-            .UseNpgsql(
-               builder.Configuration.GetConnectionString("Database"),
-               npgsqlOptions => npgsqlOptions
-                    .MigrationsHistoryTable(HistoryRepository.DefaultTableName, Schemas.Identity))
-            .UseSnakeCaseNamingConvention());
+                .UseNpgsql(
+                    builder.Configuration.GetConnectionString("Database"),
+                    npgsqlOptions => npgsqlOptions
+                        .MigrationsHistoryTable(HistoryRepository.DefaultTableName, Schemas.Identity))
+                .UseSnakeCaseNamingConvention());
 
         return builder;
     }
@@ -133,8 +124,7 @@ public static class DependencyInjection
     {
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(builder.Environment.ApplicationName))
-            .WithTracing(tracing =>
-                tracing
+            .WithTracing(tracing => tracing
                 .AddHttpClientInstrumentation()
                 .AddAspNetCoreInstrumentation()
                 .AddNpgsql())
@@ -198,33 +188,38 @@ public static class DependencyInjection
             {
                 ContentSerializer = new NewtonsoftJsonContentSerializer()
             })
-            .ConfigureHttpClient(client => client.BaseAddress = new Uri(builder.Configuration.GetSection("GitHub:BaseUrl").Get<string>()!));
-            //.AddHttpMessageHandler<DelayHandler>();
-            // Creating a custom resilience handler pipeline 
-            //.InternalRemoveAllResilienceHandlers()
-            //.AddResilienceHandler("custom", pipeline => {
-            //    pipeline.AddTimeout(TimeSpan.FromSeconds(5));
+            .ConfigureHttpClient(client =>
+            {
+                client.BaseAddress = new Uri(builder.Configuration.GetSection("GitHub:BaseUrl").Get<string>()!);
+            });
+        //.AddHttpMessageHandler<DelayHandler>();
+        //.InternalRemoveAllResilienceHandlers()
+        // Configuring a custom resilience pipeline for the GitHub API client
+        //.AddResilienceHandler("custom", pipeline =>
+        //{
+        //    pipeline.AddTimeout(TimeSpan.FromSeconds(5));
 
-            //    pipeline.AddRetry(new HttpRetryStrategyOptions
-            //    {
-            //        MaxRetryAttempts = 3,
-            //        BackoffType = DelayBackoffType.Exponential,
-            //        UseJitter = true,
-            //        Delay = TimeSpan.FromMilliseconds(500)
-            //    });
+        //    pipeline.AddRetry(new HttpRetryStrategyOptions
+        //    {
+        //        MaxRetryAttempts = 3,
+        //        BackoffType = DelayBackoffType.Exponential,
+        //        UseJitter = true,
+        //        Delay = TimeSpan.FromMilliseconds(500)
+        //    });
 
-            //    pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
-            //    {
-            //        SamplingDuration = TimeSpan.FromSeconds(10),
-            //        FailureRatio = 0.9,
-            //        MinimumThroughput = 5,
-            //        BreakDuration = TimeSpan.FromSeconds(5)
-            //    });
+        //    pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+        //    {
+        //        SamplingDuration = TimeSpan.FromSeconds(10),
+        //        FailureRatio = 0.9,
+        //        MinimumThroughput = 5,
+        //        BreakDuration = TimeSpan.FromSeconds(5)
+        //    });
 
-            //    pipeline.AddTimeout(TimeSpan.FromSeconds(1));
-            //});
+        //    pipeline.AddTimeout(TimeSpan.FromSeconds(1));
+        //});
 
-        builder.Services.Configure<EncryptionOptions>(builder.Configuration.GetSection("Encryption"));
+        builder.Services.Configure<EncryptionOptions>(
+            builder.Configuration.GetSection(EncryptionOptions.SectionName));
         builder.Services.AddTransient<EncryptionService>();
 
         builder.Services.Configure<GitHubAutomationOptions>(
@@ -244,9 +239,10 @@ public static class DependencyInjection
             .AddIdentity<IdentityUser, IdentityRole>()
             .AddEntityFrameworkStores<ApplicationIdentityDbContext>();
 
-        builder.Services.Configure<JwtAuthOptions>(builder.Configuration.GetSection("Jwt"));
-
-        JwtAuthOptions jwtAuthOptions = builder.Configuration.GetSection("Jwt").Get<JwtAuthOptions>()!;
+        builder.Services.Configure<JwtAuthOptions>(builder.Configuration.GetSection(JwtAuthOptions.SectionName));
+        JwtAuthOptions jwtAuthOptions = builder.Configuration
+            .GetSection(JwtAuthOptions.SectionName)
+            .Get<JwtAuthOptions>()!;
 
         builder.Services
             .AddAuthentication(options =>
@@ -256,7 +252,7 @@ public static class DependencyInjection
             })
             .AddJwtBearer(options =>
             {
-                options.TokenValidationParameters = new()
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidIssuer = jwtAuthOptions.Issuer,
                     ValidAudience = jwtAuthOptions.Audience,
@@ -273,6 +269,7 @@ public static class DependencyInjection
     {
         builder.Services.AddQuartz(q =>
         {
+            // GitHub automation scheduler
             q.AddJob<GitHubAutomationSchedulerJob>(opts => opts.WithIdentity("github-automation-scheduler"));
 
             q.AddTrigger(opts => opts
@@ -288,6 +285,7 @@ public static class DependencyInjection
                         .RepeatForever();
                 }));
 
+            // Entry import cleanup job - runs daily at 3 AM UTC
             q.AddJob<CleanupEntryImportJobsJob>(opts => opts.WithIdentity("cleanup-entry-imports"));
 
             q.AddTrigger(opts => opts
@@ -295,7 +293,6 @@ public static class DependencyInjection
                 .WithIdentity("cleanup-entry-imports-trigger")
                 .WithCronSchedule("0 0 3 * * ?", x => x.InTimeZone(TimeZoneInfo.Utc)));
         });
-
 
         builder.Services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);
 
@@ -312,8 +309,8 @@ public static class DependencyInjection
             {
                 policy
                     .WithOrigins(corsOptions.AllowedOrigins)
-                    .AllowAnyHeader()
-                    .AllowAnyMethod();
+                    .AllowAnyMethod()
+                    .AllowAnyHeader();
             });
         });
 
@@ -330,18 +327,17 @@ public static class DependencyInjection
             {
                 if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter))
                 {
-                    context.HttpContext.Response.Headers.RetryAfter =
-                        $"{retryAfter.TotalSeconds}";
+                    context.HttpContext.Response.Headers.RetryAfter = $"{retryAfter.TotalSeconds}";
 
                     ProblemDetailsFactory problemDetailsFactory = context.HttpContext.RequestServices
-                    .GetRequiredService<ProblemDetailsFactory>();
-
-                    Microsoft.AspNetCore.Mvc.ProblemDetails problemDetails =
-                        problemDetailsFactory.CreateProblemDetails(
+                        .GetRequiredService<ProblemDetailsFactory>();
+                    Microsoft.AspNetCore.Mvc.ProblemDetails problemDetails = problemDetailsFactory
+                        .CreateProblemDetails(
                             context.HttpContext,
                             StatusCodes.Status429TooManyRequests,
                             "Too Many Requests",
-                            detail: $"You have exceeded the allowed request limit. Please try again in {retryAfter.TotalSeconds:N0} seconds.");
+                            detail: $"Too many requests. Please try again after {retryAfter.TotalSeconds} seconds."
+                        );
 
                     await context.HttpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken: token);
                 }
@@ -355,23 +351,25 @@ public static class DependencyInjection
                 {
                     return RateLimitPartition.GetTokenBucketLimiter(
                         identityId,
-                        _ => new TokenBucketRateLimiterOptions
-                        {
-                            TokenLimit = 100,
-                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                            QueueLimit = 5,
-                            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-                            TokensPerPeriod = 25
-                        });
+                        _ =>
+                            new TokenBucketRateLimiterOptions
+                            {
+                                TokenLimit = 100,
+                                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                                QueueLimit = 5,
+                                ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                                TokensPerPeriod = 25
+                            });
                 }
 
                 return RateLimitPartition.GetFixedWindowLimiter(
                     "anonymous",
-                    _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = 5,
-                        Window = TimeSpan.FromMinutes(1),
-                    });
+                    _ =>
+                        new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 5,
+                            Window = TimeSpan.FromMinutes(1)
+                        });
             });
         });
 

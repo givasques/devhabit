@@ -1,6 +1,5 @@
 using DevHabit.Api;
 using DevHabit.Api.Extensions;
-using DevHabit.Api.Middleware;
 using DevHabit.Api.Settings;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -8,7 +7,7 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder
     .AddApiServices()
     .AddErrorHandling()
-    .AddDataBase()
+    .AddDatabase()
     .AddObservability()
     .AddApplicationServices()
     .AddAuthenticationServices()
@@ -23,9 +22,9 @@ if (app.Environment.IsDevelopment())
     //app.MapOpenApi();
 
     app.UseSwagger();
-    app.UseSwaggerUI(options =>
+    app.UseSwaggerUI(c =>
     {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "DevHabit API v1");
     });
 
     await app.ApplyMigrationsAsync();
@@ -42,7 +41,7 @@ app.UseAuthorization();
 app.UseRateLimiter();
 
 app.UseUserContextEnrichment();
-app.UseMiddleware<ETagMiddleware>();
+//app.UseETag();
 
 app.MapControllers();
 

@@ -9,14 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="NovaPasta1\**" />
-    <Content Remove="NovaPasta1\**" />
-    <EmbeddedResource Remove="NovaPasta1\**" />
-    <None Remove="NovaPasta1\**" />
-  </ItemGroup>
-
-  <ItemGroup>
 	  <PackageReference Include="Asp.Versioning.Mvc" />
+	  <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
 	  <PackageReference Include="CsvHelper" />
 	  <PackageReference Include="EFCore.NamingConventions" />
 	  <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
@@ -42,11 +36,6 @@
 	  <PackageReference Include="Refit.Newtonsoft.Json" />
 	  <PackageReference Include="Swashbuckle.AspNetCore" />
 	  <PackageReference Include="System.Linq.Dynamic.Core" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Migrations\Application\" />
-    <Folder Include="Migrations\Identity\" />
   </ItemGroup>
 
 	<ItemGroup>
