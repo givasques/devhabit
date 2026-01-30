@@ -9,7 +9,7 @@ on:
       - "DevHabit/**"
 
 env:
-  AZURE_WEBAPP_NAME: devhabit-api
+  AZURE_WEBAPP_NAME: dev-habit-api
   AZURE_WEBAPP_PACKAGE_PATH: "./DevHabit/DevHabit.Api/publish"
   DOTNET_VERSION: "9.x"
   WORKING_DIRECTORY: DevHabit
