@@ -53,36 +53,36 @@ jobs:
           name: webapp
           path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
-  apply-migrations:
-    name: Apply Database Migrations
-    needs: build-and-test
-    runs-on: ubuntu-latest
+  # apply-migrations:
+  #   name: Apply Database Migrations
+  #   needs: build-and-test
+  #   runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: ${{ env.WORKING_DIRECTORY }}
+  #   defaults:
+  #     run:
+  #       working-directory: ${{ env.WORKING_DIRECTORY }}
 
-    steps:
-      - uses: actions/checkout@v4
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+  #     - name: Setup .NET
+  #       uses: actions/setup-dotnet@v4
+  #       with:
+  #         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Install EF Core CLI
-        run: dotnet tool install --global dotnet-ef
+  #     - name: Install EF Core CLI
+  #       run: dotnet tool install --global dotnet-ef
 
-      - name: Create migration bundle
-        run: |
-          dotnet ef migrations bundle --startup-project ${{ env.API_PROJECT_PATH }} --project ${{ env.API_PROJECT_PATH }} --context ApplicationDbContext --output app-bundle.exe
-          dotnet ef migrations bundle --startup-project ${{ env.API_PROJECT_PATH }} --project ${{ env.API_PROJECT_PATH }} --context ApplicationIdentityDbContext --output identity-bundle.exe
+  #     - name: Create migration bundle
+  #       run: |
+  #         dotnet ef migrations bundle --startup-project ${{ env.API_PROJECT_PATH }} --project ${{ env.API_PROJECT_PATH }} --context ApplicationDbContext --output app-bundle.exe
+  #         dotnet ef migrations bundle --startup-project ${{ env.API_PROJECT_PATH }} --project ${{ env.API_PROJECT_PATH }} --context ApplicationIdentityDbContext --output identity-bundle.exe
 
-      - name: Apply app migrations
-        run: ./app-bundle.exe --connection "${{ secrets.DATABASE_CONNECTION_STRING }}"
+  #     - name: Apply app migrations
+  #       run: ./app-bundle.exe --connection "${{ secrets.DATABASE_CONNECTION_STRING }}"
 
-      - name: Apply identity migrations
-        run: ./identity-bundle.exe --connection "${{ secrets.DATABASE_CONNECTION_STRING }}"
+  #     - name: Apply identity migrations
+  #       run: ./identity-bundle.exe --connection "${{ secrets.DATABASE_CONNECTION_STRING }}"
 
   deploy:
     name: Deploy to Azure
