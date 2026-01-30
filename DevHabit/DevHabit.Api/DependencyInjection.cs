@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using System.Threading.RateLimiting;
 using Asp.Versioning;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
@@ -16,6 +17,7 @@ using DevHabit.Api.Services.Sorting;
 using DevHabit.Api.Settings;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
@@ -38,6 +40,12 @@ public static class DependencyInjection
 {
     public static WebApplicationBuilder AddApiServices(this WebApplicationBuilder builder)
     {
+        builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
+        {
+            options.SerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+            options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        });
+
         builder.Services.AddControllers(options =>
         {
             options.ReturnHttpNotAcceptable = true;
@@ -81,6 +89,8 @@ public static class DependencyInjection
         builder.Services.ConfigureOptions<ConfigureSwaggerGenOptions>();
 
         builder.Services.AddResponseCaching();
+
+        builder.Services.AddEndpointsApiExplorer();
 
         return builder;
     }

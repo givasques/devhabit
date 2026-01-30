@@ -17,6 +17,14 @@ public class LinkService(LinkGenerator linkGenerator, IHttpContextAccessor httpC
             controller,
             values);
 
+        if (string.IsNullOrWhiteSpace(href))
+        {
+            href = linkGenerator.GetUriByName(
+                httpContextAccessor.HttpContext!, 
+                endpointName,
+                values);
+        }
+
         return new LinkDto
         {
             Href = href ?? throw new Exception("Invalid endpoint name provided"),

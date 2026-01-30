@@ -1,4 +1,5 @@
 using DevHabit.Api;
+using DevHabit.Api.Endpoints;
 using DevHabit.Api.Extensions;
 using DevHabit.Api.Settings;
 using Scalar.AspNetCore;
@@ -50,6 +51,8 @@ app.UseUserContextEnrichment();
 //app.UseETag();
 
 app.MapControllers();
+
+app.MapHabitEndpoints();
 
 await app.RunAsync();
 
