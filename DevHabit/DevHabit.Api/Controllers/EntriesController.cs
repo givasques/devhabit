@@ -225,7 +225,7 @@ public sealed class EntriesController(
     /// Creates a new entry for a habit.
     /// </summary>
     [HttpPost]
-    [IdempotentRequest]
+    //[IdempotentRequest]
     [ProducesResponseType(typeof(EntryDto), StatusCodes.Status201Created)]
     public async Task<ActionResult<EntryDto>> CreateEntry(
         CreateEntryDto createEntryDto,
