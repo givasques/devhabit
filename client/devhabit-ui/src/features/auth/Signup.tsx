@@ -17,7 +17,7 @@ export default function Signup() {
   ) => {
     try {
       setError(null);
-      //const response = await register({ name, email, password, confirmPassword });
+      const response = await register({ name, email, password, confirmPassword });
 
       // Store tokens and redirect
       //login(response.accessToken, response.refreshToken);
